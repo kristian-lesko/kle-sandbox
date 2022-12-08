@@ -32,6 +32,7 @@ jobs:
           CUTOFF=`date -d '${{ inputs.days }} days ago' +%Y/%m/%d`
           echo COMMIT=`git rev-list --until=$CUTOFF -n 1 HEAD` >> $GITHUB_OUTPUT
           echo BRANCH="${{ fromJSON('{"production":"staging"}')[inputs.target] || 'develop' }}-${COMMIT}" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
 
       - name: Checkout repo at cutoff commit
         uses: actions/checkout@v3
