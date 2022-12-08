@@ -28,6 +28,7 @@ jobs:
           ref: ${{ fromJSON('{"production":"staging"}')[inputs.target] || 'develop' }}
       - name: Get date of commit cutoff date
         id: prepare
+        shell: bash
         run: |
           CUTOFF=`date -d '${{ inputs.days }} days ago' +%Y/%m/%d`
           echo COMMIT=`git rev-list --until=$CUTOFF -n 1 HEAD` >> $GITHUB_OUTPUT
