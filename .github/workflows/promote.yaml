@@ -1,0 +1,55 @@
+---
+name: promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target branch to promote into'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - 'staging'
+          - 'production'
+      days:
+        description: 'Up until X days ago'
+        required: true
+        default: '2'
+
+jobs:
+  promote-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ fromJSON('{"production":"staging"}')[inputs.target] || 'develop' }}
+      - name: Get date of commit cutoff date
+        id: prepare
+        run: |
+          CUTOFF=`date -d '${{ inputs.days }} days ago' +%Y/%m/%d`
+          echo COMMIT=`git rev-list --until=$CUTOFF -n 1 HEAD` >> $GITHUB_OUTPUT
+          echo BRANCH="${{ fromJSON('{"production":"staging"}')[inputs.target] || 'develop' }}-${COMMIT}" >> $GITHUB_OUTPUT
+
+      - name: Checkout repo at cutoff commit
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.prepare.outputs.COMMIT }}
+
+      - name: Push to the new branch
+        uses: ad-m/github-push-action@master
+        with:
+          branch: ${{ steps.prepare.outputs.BRANCH }}
+
+      - name: Create promote PR
+        uses: repo-sync/pull-request@v2
+        with:
+          source_branch: ${{ steps.prepare.outputs.BRANCH }}
+          destination_branch: ${{ inputs.target }}
+          pr_title: "[auto] Promote ${{ steps.prepare.outputs.BRANCH }} to ${{ inputs.target }}"
+          pr_body: ":octocat: Automated PR testing"
+          pr_draft: false
+          pr_allow_empty: false
+          github_token: ${{ secrets.GDMERGE_TOKEN }}
